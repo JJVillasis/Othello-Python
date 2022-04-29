@@ -1,6 +1,16 @@
+##### Game Libraries #####
 from numpy import zeros
 from time import sleep
 from random import shuffle
+
+##### Graphics Libraries #####
+import pygame
+from sys import exit
+
+##### Global Variables #####
+GREEN = (0, 255, 0)
+BLACK = (0, 0, 0)
+WHITE = (255, 255, 255)
 
 class Othello:
 
@@ -39,6 +49,8 @@ class Othello:
 
         #Int turn - determine who's turn to play
         s.turn = s.BLACK_TURN
+
+    ##### Game Functions #####
 
     #Print the board with position indicators
     def printBoard(s, board):
@@ -86,8 +98,8 @@ class Othello:
         #Readable Columns
         cols = ["A", "B", "C", "D", "E", "F", "G", "H"]
         output = ""
-        output += cols[pos[1]]
-        output += str(pos[0])
+        output += cols[pos[0]]
+        output += str(pos[1]+1)
         return output
 
     #Check if position on board is open and can flank enemy disc
@@ -271,6 +283,56 @@ class Othello:
                 print("Unknown command. Please try again.")
                 print()
 
+    ##### Graphics Functions #####
+
+    #Draw the board in the pygame window
+    def drawBoard(s, board):
+        for row in range(s.BOARD_ROWS):
+            for col in range(s.BOARD_COLS):
+                pygame.draw.rect(s.screen, GREEN, (col * s.SQUARESIZE, row*s.SQUARESIZE, s.SQUARESIZE, s.SQUARESIZE))
+                #Vertical Hash
+                pygame.draw.line(s.screen, BLACK, (col * s.SQUARESIZE, 0), (col * s.SQUARESIZE, s.BOARD_ROWS * s.SQUARESIZE))
+                #Horizontal Hash
+                pygame.draw.line(s.screen, BLACK, (0, row*s.SQUARESIZE), (col * s.SQUARESIZE+s.SQUARESIZE, row*s.SQUARESIZE))
+
+                #Draw black tokens
+                if board[row][col] == s.BLACK_TOKEN:
+                    pygame.draw.circle(s.screen, BLACK, (int(col*s.SQUARESIZE+s.SQUARESIZE/2), int(row*s.SQUARESIZE+s.SQUARESIZE/2)), s.RADIUS)
+                #Draw white tokens
+                elif board[row][col] == s.WHITE_TOKEN:
+                    pygame.draw.circle(s.screen, WHITE, (int(col*s.SQUARESIZE+s.SQUARESIZE/2), int(row*s.SQUARESIZE+s.SQUARESIZE/2)), s.RADIUS)
+        pygame.display.update()
+
+    #Draw board visualizing score of the game
+    def drawScoreboard(self):
+        #Get scores of tokens
+        blackScore = self.getScore(self.board, self.BLACK_TOKEN)
+        whiteScore = self.getScore(self.board, self.WHITE_TOKEN)
+
+        for row in range(self.BOARD_ROWS):
+            for col in range(self.BOARD_COLS):
+                pygame.draw.rect(self.screen, GREEN, (col * self.SQUARESIZE, row*self.SQUARESIZE, self.SQUARESIZE, self.SQUARESIZE))
+                #Vertical Hash
+                pygame.draw.line(self.screen, BLACK, (col * self.SQUARESIZE, 0), (col * self.SQUARESIZE, self.BOARD_ROWS * self.SQUARESIZE))
+                #Horizontal Hash
+                pygame.draw.line(self.screen, BLACK, (0, row*self.SQUARESIZE), (col * self.SQUARESIZE+self.SQUARESIZE, row*self.SQUARESIZE))
+
+        for row in range(self.BOARD_ROWS):
+            for col in range(self.BOARD_COLS):
+                if blackScore > 0:
+                    pygame.draw.circle(self.screen, BLACK, (int(col*self.SQUARESIZE+self.SQUARESIZE/2), int(row*self.SQUARESIZE+self.SQUARESIZE/2)), self.RADIUS)
+                    blackScore -= 1
+                elif blackScore == 0 and whiteScore > 0:
+                    pygame.draw.circle(self.screen, WHITE, (int(col*self.SQUARESIZE+self.SQUARESIZE/2), int(row*self.SQUARESIZE+self.SQUARESIZE/2)), self.RADIUS)
+                    whiteScore -= 1
+
+                pygame.display.update()
+                sleep(.2)
+
+        pygame.display.update()
+
+    ##### Play Function #####
+
     def play(s):
         #Who goes first
         player = s.playerColor()
@@ -278,44 +340,70 @@ class Othello:
         pColor = player[1]
         aColor = (pColor % 2) + 1
 
-        #Game loop
+        #Start pygame
+        pygame.init()
+
+        #Graphics Dimensions
+        s.SQUARESIZE = 100 #pixels
+        s.RADIUS = int(s.SQUARESIZE/2 - 5)
+        windowWidth = (s.BOARD_COLS * s.SQUARESIZE)
+        windowHeight = (s.BOARD_ROWS * s.SQUARESIZE)
+        s.windowSize = (windowWidth, windowHeight)
+
+        s.screen = pygame.display.set_mode(s.windowSize)
+
+        s.drawBoard(s.board)
+        pygame.display.update()
+
+        ##### Game loop #####
         while True:
 
             print("==================================================")
             print()
 
             s.printBoard(s.board)
+            s.drawBoard(s.board)
 
-            #Player's turn
+            ##### Player's turn #####
             if s.turn == pTurn:
+
                 #User input loop
                 #Check if token can make a valid move; if not, skip turn
-                while len(s.getValidMoves(s.board, pColor)) != 0:
-                    #User input: disc placement
-                    command = input("Player's Turn (A-F|1-8): ").upper()
-                    print()
+                if len(s.getValidMoves(s.board, pColor)) != 0:
+                    input = False
+                    while not input:
+                        for event in pygame.event.get():
 
-                    #Check if command is valid
-                    if not s.isVaildCommand(command):
-                        print("Unknown command. Please try again.")
-                        print()
-                        continue
+                            #Quit window
+                            if event.type == pygame.QUIT:
+                                exit(1)
+                            #Mosue input
+                            if event.type == pygame.MOUSEBUTTONDOWN:
+                                #Get Mouse position
+                                mousePos = [int(event.pos[0]/s.SQUARESIZE), int(event.pos[1]/s.SQUARESIZE)]
 
-                    pos = s.strToPos(command)
+                                #User input: disc placement
+                                command = s.posToStr(mousePos)
 
-                    #Check if position is a valid move
-                    if s.isVaildMove(pos, s.board, pColor) == False:
-                        print("Position (" + command + ") is not a valid move.")
-                        print()
-                        continue
-                    else:
-                        s.placeToken(pos, s.board, pColor)
-                        break
+                                print("Player input: " + command)
+                                print()
 
-            #AI's Turn
+                                pos = s.strToPos(command)
+                                #Check if position is a valid move
+                                if s.isVaildMove(pos, s.board, pColor) == False:
+                                    print("Position (" + command + ") is not a valid move.")
+                                    print()
+                                    continue
+
+                                else:
+                                    s.placeToken(pos, s.board, pColor)
+                                    input = True
+                                    break
+
+            ##### AI's Turn #####
             else:
                 #Add buffer for better UX
-                sleep(1)
+                sleep(.5)
 
                 #Check if token can make a valid move; if not, skip turn
                 if len(s.getValidMoves(s.board, aColor)) != 0:
@@ -337,18 +425,22 @@ class Othello:
                 break
             #Next Turn
             else:
-                s.turn += 1
-                s.turn %= 2
+                s.turn = (s.turn + 1) % 2
 
         #Game Over
         print("Game Over!")
         print()
+
+        s.printBoard(s.board)
+        s.drawBoard(s.board)
+        sleep(2)
 
         #Get scores
         playerScore = s.getScore(s.board, pColor)
         aiScore = s.getScore(s.board, aColor)
 
         #Print scoreboard
+        s.drawScoreboard()
         s.printBoard(s.scoreboard())
 
         print("Player = " + str(playerScore))
@@ -361,12 +453,17 @@ class Othello:
         elif aiScore > playerScore:
             print("AI Wins!")
         else:
-            print("Draw!")
+            print("Draw...")
 
         print()
 
+        while True:
+            for event in pygame.event.get():
+                #Quit window
+                if event.type == pygame.QUIT:
+                    exit(1)
 
 
 
-game = Othello()
-game.play()
+othello = Othello()
+othello.play()
