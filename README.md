@@ -1,1 +1,1 @@
-# Othello-Python
+# Othello Game (Python)
