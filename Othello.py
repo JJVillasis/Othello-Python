@@ -1,5 +1,6 @@
-import numpy
-import sys
+from numpy import zeros
+from time import sleep
+from random import shuffle
 
 class Othello:
 
@@ -28,7 +29,7 @@ class Othello:
         s.BLACK_START2 = s.strToPos("D5")
 
         #Create an empty board
-        s.board = numpy.zeros((s.BOARD_ROWS, s.BOARD_COLS))
+        s.board = zeros((s.BOARD_ROWS, s.BOARD_COLS))
 
         #Place starting discs
         s.board[s.WHITE_START1[0]][s.WHITE_START1[1]] = s.WHITE_TOKEN
@@ -40,11 +41,11 @@ class Othello:
         s.turn = s.BLACK_TURN
 
     #Print the board with position indicators
-    def printBoard(s):
+    def printBoard(s, board):
         print("   |A  B  C  D  E  F  G  H |")
         print("   -------------------------")
         for row in range(s.BOARD_ROWS):
-            print(str(row+1) + "| " + str(s.board[row]))
+            print(str(row+1) + "| " + str(board[row]))
         print()
 
     #Check if given position is within bounds
@@ -79,6 +80,15 @@ class Othello:
 
         #return position
         return row, numCol
+
+    #Convert position to Readable string
+    def posToStr(s, pos):
+        #Readable Columns
+        cols = ["A", "B", "C", "D", "E", "F", "G", "H"]
+        output = ""
+        output += cols[pos[1]]
+        output += str(pos[0])
+        return output
 
     #Check if position on board is open and can flank enemy disc
     #If valid move, return list of flanked discs
@@ -160,6 +170,34 @@ class Othello:
 
         return validMoves
 
+    #Get best move of current state of the board for token
+    def getBestMove(s, board, token):
+        #Get list of valid moves for token
+        posibleMoves = s.getValidMoves(board, token)
+
+        #Randomize possible moves list
+        shuffle(posibleMoves)
+
+        bestScore = -1
+        bestMove = [0,0]
+
+        #Traverse list of valid moves
+        for row, col in posibleMoves:
+
+            #Prioritize going for corners
+            if (row == 0 or row == s.BOARD_ROWS) and (col == 0 or col == s.BOARD_COLS):
+                return [row, col]
+
+            #Find move that gives the best score
+            tempBoard = board.copy()
+            s.placeToken([row, col], tempBoard, token)
+            tempScore = s.getScore(tempBoard, token)
+            if tempScore > bestScore:
+                bestMove = [row, col]
+                bestScore = tempScore
+
+        return bestMove
+
     #Place given disc color in position
     def placeToken(s, pos, board, token):
         #Get list of flanked discs
@@ -172,19 +210,51 @@ class Othello:
         for row, col in flanked:
             board[row][col] = token
 
-    #Retrun list of scores of the tokens
-    def getScores(s, board):
-        blackScore = 0
-        whiteScore = 0
+    #Return list of scores of the token
+    def getScore(s, board, token):
+        score = 0
 
         for row in range(s.BOARD_ROWS):
             for col in range(s.BOARD_COLS):
-                if board[row][col] == s.BLACK_TOKEN:
-                    blackScore += 1
-                elif board[row][col] == s.WHITE_TOKEN:
-                    whiteScore += 1
+                if board[row][col] == token:
+                    score += 1
 
-        return blackScore, whiteScore
+        return score
+
+    #Return board visualizing score of the game
+    def scoreboard(s):
+        #Get scores of tokens
+        blackScore = s.getScore(s.board, s.BLACK_TOKEN)
+        whiteScore = s.getScore(s.board, s.WHITE_TOKEN)
+
+        #Create empty board
+        scoreboard = zeros((s.BOARD_ROWS, s.BOARD_COLS))
+
+        #Array iterators
+        row = 0
+        col = 0
+
+        #Black score
+        for s in range (blackScore):
+            scoreboard[row][col] = 1
+
+            #Increment iterator
+            col += 1
+            if col == 8:
+                col = 0
+                row += 1
+
+        #White Score
+        for s in range (whiteScore):
+            scoreboard[row][col] = 2
+
+            #Increment iterator
+            col += 1
+            if col == 8:
+                col = 0
+                row += 1
+
+        return scoreboard
 
     #Find if player goes first or second
     def playerColor(s):
@@ -211,12 +281,16 @@ class Othello:
         #Game loop
         while True:
 
-            s.printBoard()
+            print("==================================================")
+            print()
+
+            s.printBoard(s.board)
 
             #Player's turn
             if s.turn == pTurn:
                 #User input loop
-                while True:
+                #Check if token can make a valid move; if not, skip turn
+                while len(s.getValidMoves(s.board, pColor)) != 0:
                     #User input: disc placement
                     command = input("Player's Turn (A-F|1-8): ").upper()
                     print()
@@ -235,34 +309,28 @@ class Othello:
                         print()
                         continue
                     else:
+                        s.placeToken(pos, s.board, pColor)
                         break
-
-                s.placeToken(pos, s.board, pColor)
 
             #AI's Turn
             else:
-                while True:
-                    #User input: disc placement
-                    command = input("AI's Turn (A-F|1-8): ").upper()
-                    print()
+                #Add buffer for better UX
+                sleep(1)
 
-                    #Check if command is valid
-                    if not s.isVaildCommand(command):
-                        print("Unknown command. Please try again.")
-                        print()
-                        continue
+                #Check if token can make a valid move; if not, skip turn
+                if len(s.getValidMoves(s.board, aColor)) != 0:
+                    #AI = find best move to make
+                    pos = s.getBestMove(s.board, aColor)
 
-                    pos = s.strToPos(command)
+                    #Signal AI output
+                    output = s.posToStr(pos)
+                    print("AI Input: " + output)
 
-                    #Check if position is a valid move
-                    if s.isVaildMove(pos, s.board, aColor) == False:
-                        print("Position (" + command + ") is not a valid move.")
-                        print()
-                        continue
-                    else:
-                        break
+                    #Place disc
+                    s.placeToken(pos, s.board, aColor)
 
-                s.placeToken(pos, s.board, aColor)
+            print("==================================================")
+            print()
 
             #No more valid moves => Game Over
             if len(s.getValidMoves(s.board, pColor)) == 0 and len(s.getValidMoves(s.board, aColor)) == 0:
@@ -271,6 +339,31 @@ class Othello:
             else:
                 s.turn += 1
                 s.turn %= 2
+
+        #Game Over
+        print("Game Over!")
+        print()
+
+        #Get scores
+        playerScore = s.getScore(s.board, pColor)
+        aiScore = s.getScore(s.board, aColor)
+
+        #Print scoreboard
+        s.printBoard(s.scoreboard())
+
+        print("Player = " + str(playerScore))
+        print("AI = " + str(aiScore))
+        print()
+
+        #Who Won
+        if playerScore > aiScore:
+            print("Player Wins!")
+        elif aiScore > playerScore:
+            print("AI Wins!")
+        else:
+            print("Draw!")
+
+        print()
 
 
 
