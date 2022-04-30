@@ -462,8 +462,3 @@ class Othello:
                 #Quit window
                 if event.type == pygame.QUIT:
                     exit(1)
-
-
-
-othello = Othello()
-othello.play()
