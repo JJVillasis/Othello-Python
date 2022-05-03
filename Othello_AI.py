@@ -507,38 +507,19 @@ class Othello:
             ##### Player's turn #####
             if s.turn == pTurn:
 
+                sleep(.5)
+
                 #User input loop
                 #Check if token can make a valid move; if not, skip turn
                 if len(s.getValidMoves(s.board, pColor)) != 0:
-                    input = False
-                    while not input:
-                        for event in pygame.event.get():
+                    pos = s.getBestMove(s.board, pColor)
 
-                            #Quit window
-                            if event.type == pygame.QUIT:
-                                exit(1)
-                            #Mosue input
-                            if event.type == pygame.MOUSEBUTTONDOWN:
-                                #Get Mouse position
-                                mousePos = [int(event.pos[0]/s.SQUARESIZE), int(event.pos[1]/s.SQUARESIZE)]
+                    #Signal AI output
+                    output = s.posToStr(pos)
+                    print("Best Move Input: " + output)
 
-                                #User input: disc placement
-                                command = s.posToStr(mousePos)
-
-                                print("Player input: " + command)
-                                print()
-
-                                pos = s.strToPos(command)
-                                #Check if position is a valid move
-                                if s.isVaildMove(pos, s.board, pColor) == False:
-                                    print("Position (" + command + ") is not a valid move.")
-                                    print()
-                                    continue
-
-                                else:
-                                    s.placeToken(pos, s.board, pColor)
-                                    input = True
-                                    break
+                    #Place disc
+                    s.placeToken(pos, s.board, pColor)
 
             ##### AI's Turn #####
             else:
@@ -604,3 +585,6 @@ class Othello:
                 #Quit window
                 if event.type == pygame.QUIT:
                     exit(1)
+
+game = Othello()
+game.play()
