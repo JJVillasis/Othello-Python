@@ -42,6 +42,16 @@ GREEN = (0, 255, 0)     #Game Board
 BLACK = (0, 0, 0)       #Black Disc
 WHITE = (255, 255, 255) #White Disc
 
+WEIGHTS =   [[16.16, -3.03,  0.99,  0.43,  0.43,  0.99, -3.03, 16.16],
+             [-4.12, -1.81, -0.08, -0.27, -0.27, -0.08, -1.81, -4.12],
+             [ 1.33, -0.04,  0.51,  0.07,  0.07,  0.51, -0.04,  1.33],
+             [ 0.63, -0.18, -0.04, -0.01, -0.01, -0.04, -0.18,  0.63],
+             [ 0.63, -0.18, -0.04, -0.01, -0.01, -0.04, -0.18,  0.63],
+             [ 1.33, -0.04,  0.51,  0.07,  0.07,  0.51, -0.04,  1.33],
+             [-4.12, -1.81, -0.08, -0.27, -0.27, -0.08, -1.81, -4.12],
+             [16.16, -3.03,  0.99,  0.43,  0.43,  0.99, -3.03, 16.16]]
+
+
 
 class Othello:
 
@@ -286,11 +296,52 @@ class Othello:
 
         return bestMove
 
+    #Get all positions for the token
+    def getTokenPositions(s, board, token):
+        tokenPositions = []
 
+        for row in range(s.BOARD_ROWS):
+            for col in range(s.BOARD_COLS):
+                if board[row][col] == token:
+                    tokenPositions.append((row, col))
+
+        return tokenPositions
+
+
+    #Check if the a given position is a frontier disc
+    def isFrontierDisc(s, board, pos):
+        frontier = False
+
+        for x, y in [[0,1],[1,1],[1,0],[1,-1],[0,-1],[-1,-1],[-1,0],[-1,1]]:
+            row, col = pos
+            row += x
+            col += y
+
+            if s.isOnBoard([row, col]) and board[row][col] == 0:
+                frontier = True
+
+        return frontier
+
+    #Score the current state of the board
+    def scoreState(s, board, token):
+        tokenPositions = s.getTokenPositions(board, token)
+        score = 0
+
+        #Score player discs
+        for row, col in tokenPositions:
+            if s.isFrontierDisc(board, (row, col)):
+                score += 2 * weightedBoard[row][col]
+            else:
+                score += 10 * weightedBoard[row][col]
+
+        return score
+
+    #Check if board is end state
     def isTerminalNode(s, board):
         return len(s.getValidMoves(board, BLACK_TOKEN)) == 0 and len(s.getValidMoves(board, WHITE_TOKEN)) == 0
 
 
+    #Minimax algorithm
     def miniMaxMove(s, board, depth, maximizingPlayer, token):
          #Get list of valid moves
         possibleMoves = s.getValidMoves(board, token)
@@ -442,19 +493,38 @@ class Othello:
             ##### Player's turn #####
             if s.turn == pTurn:
 
-                sleep(.5)
-
                 #User input loop
                 #Check if token can make a valid move; if not, skip turn
                 if len(s.getValidMoves(s.board, pColor)) != 0:
-                    pos = s.getBestMove(s.board, pColor)
+                    input = False
+                    while not input:
+                        for event in pygame.event.get():
 
-                    #Signal AI output
-                    output = s.posToStr(pos)
-                    print("Best Move Input: " + output)
+                            #Quit window
+                            if event.type == pygame.QUIT:
+                                exit(1)
+                            #Mosue input
+                            if event.type == pygame.MOUSEBUTTONDOWN:
+                                #Get Mouse position
+                                mousePos = [int(event.pos[1]/SQUARESIZE), int(event.pos[0]/SQUARESIZE)]
 
-                    #Place disc
-                    s.placeToken(pos, s.board, pColor)
+                                #User input: disc placement
+                                command = s.posToStr(mousePos)
+
+                                print("Player input: " + command)
+                                print()
+
+                                pos = s.strToPos(command)
+                                #Check if position is a valid move
+                                if s.isVaildMove(pos, s.board, pColor) == False:
+                                    print("Position (" + command + ") is not a valid move.")
+                                    print()
+                                    continue
+
+                                else:
+                                    s.placeToken(pos, s.board, pColor)
+                                    input = True
+                                    break
 
             ##### AI's Turn #####
             else:
